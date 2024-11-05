@@ -165,11 +165,33 @@ class StockScreener:
         """获取并过滤A股股票列表"""
         try:
             logger.info("开始获取股票列表...")
-            stock_info = ak.stock_info_a_code_name()
 
-            if stock_info.empty:
-                logger.error("获取股票列表失败: 返回数据为空")
+            # 禁用 tqdm 进度条
+            import tqdm
+            original_tqdm = tqdm.tqdm
+            tqdm.tqdm = lambda *args, **kwargs: args[0]
+
+            try:
+                # 获取股票列表，改用更可靠的方式
+                stock_info = ak.stock_info_a_code_name()
+
+                # 验证数据
+                if stock_info is None or not isinstance(stock_info, pd.DataFrame) or stock_info.empty:
+                    logger.error("获取股票列表失败: 返回数据无效")
+                    return pd.DataFrame()
+
+                # 确保必要的列存在
+                required_columns = ['code', 'name']
+                if not all(col in stock_info.columns for col in required_columns):
+                    logger.error("获取股票列表失败: 数据格式不正确")
+                    return pd.DataFrame()
+
+            except Exception as e:
+                logger.error(f"获取股票列表时发生错误: {str(e)}")
                 return pd.DataFrame()
+            finally:
+                # 恢复 tqdm
+                tqdm.tqdm = original_tqdm
 
             # 记录初始数量
             self.statistics['total_stocks'] = len(stock_info)
@@ -178,49 +200,59 @@ class StockScreener:
             # 应用过滤条件
             filter_switches = self.config['filter_switches']
 
-            if filter_switches['exclude_st']:
-                stock_info = self._apply_filter(
-                    stock_info,
-                    ~stock_info['name'].str.contains('ST', case=False, na=False),
-                    '排除ST股票'
-                )
+            try:
+                if filter_switches['exclude_st']:
+                    stock_info = self._apply_filter(
+                        stock_info,
+                        ~stock_info['name'].str.contains('ST|\\*ST', case=False, na=False),
+                        '排除ST股票'
+                    )
 
-            if filter_switches['exclude_gem']:
-                stock_info = self._apply_filter(
-                    stock_info,
-                    ~stock_info['code'].str.startswith('300'),
-                    '排除创业板'
-                )
+                if filter_switches['exclude_gem']:
+                    stock_info = self._apply_filter(
+                        stock_info,
+                        ~stock_info['code'].str.startswith('300'),
+                        '排除创业板'
+                    )
 
-            if filter_switches['exclude_star']:
-                stock_info = self._apply_filter(
-                    stock_info,
-                    ~stock_info['code'].str.startswith('688'),
-                    '排除科创板'
-                )
+                if filter_switches['exclude_star']:
+                    stock_info = self._apply_filter(
+                        stock_info,
+                        ~stock_info['code'].str.startswith('688'),
+                        '排除科创板'
+                    )
 
-            if filter_switches['exclude_bse']:
-                stock_info = self._apply_filter(
-                    stock_info,
-                    ~stock_info['code'].str.startswith('8'),
-                    '排除北交所'
-                )
+                if filter_switches['exclude_bse']:
+                    stock_info = self._apply_filter(
+                        stock_info,
+                        ~stock_info['code'].str.startswith('8'),
+                        '排除北交所'
+                    )
 
-            # 更新最终过滤统计
-            self.statistics['filtered_stocks'] = len(stock_info)
-            filtered_total = self.statistics['total_stocks'] - self.statistics['filtered_stocks']
+                # 更新最终过滤统计
+                self.statistics['filtered_stocks'] = len(stock_info)
+                filtered_total = self.statistics['total_stocks'] - self.statistics['filtered_stocks']
 
-            # 输出统计信息
-            logger.info("====== 股票过滤统计 ======")
-            logger.info(f"初始股票总数: {self.statistics['total_stocks']}")
-            for filter_name, stats in self.statistics['filtered_details'].items():
-                logger.info(f"{filter_name}: 排除 {stats['removed']} 只")
-            logger.info(f"最终剩余数量: {self.statistics['filtered_stocks']}")
-            logger.info(
-                f"总计过滤掉: {filtered_total} 只股票 ({filtered_total / self.statistics['total_stocks'] * 100:.2f}%)")
-            logger.info("=========================")
+                # 输出统计信息
+                logger.info("====== 股票过滤统计 ======")
+                logger.info(f"初始股票总数: {self.statistics['total_stocks']}")
+                for filter_name, stats in self.statistics['filtered_details'].items():
+                    logger.info(f"{filter_name}: 排除 {stats['removed']} 只")
+                logger.info(f"最终剩余数量: {self.statistics['filtered_stocks']}")
+                logger.info(
+                    f"总计过滤掉: {filtered_total} 只股票 ({filtered_total / self.statistics['total_stocks'] * 100:.2f}%)")
+                logger.info("=========================")
 
-            return stock_info
+                if stock_info.empty:
+                    logger.warning("过滤后没有符合条件的股票")
+                    return pd.DataFrame()
+
+                return stock_info
+
+            except Exception as e:
+                logger.error(f"应用过滤条件时发生错误: {str(e)}")
+                logger.exception("详细错误信息:")
+                return pd.DataFrame()
 
         except Exception as e:
             logger.error(f"获取股票列表失败: {str(e)}")

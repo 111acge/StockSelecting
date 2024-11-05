@@ -212,10 +212,27 @@ class ControlPanel(QWidget):
         self.start_button.setEnabled(False)
         self.start_button.setText("筛选中...")
         self.export_button.setEnabled(False)
-        self.start_screening.emit(self.get_config())
+        config = self.get_config()
 
-    def on_screening_finished(self):
+        # 验证日期
+        start_date = datetime.strptime(config['data']['start_date'], '%Y%m%d')
+        end_date = datetime.strptime(config['data']['end_date'], '%Y%m%d')
+
+        if start_date >= end_date:
+            from PyQt6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self,
+                "日期错误",
+                "开始日期必须早于结束日期",
+                QMessageBox.StandardButton.Ok
+            )
+            self.on_screening_finished()
+            return
+
+        self.start_screening.emit(config)
+
+    def on_screening_finished(self, success: bool = True):
         """筛选完成处理"""
         self.start_button.setEnabled(True)
         self.start_button.setText("开始筛选")
-        self.export_button.setEnabled(True)
+        self.export_button.setEnabled(success)
