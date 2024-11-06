@@ -48,6 +48,7 @@ def find_akshare_data():
                         akshare_data.append((full_path, os.path.join('akshare', rel_path)))
     return akshare_data
 
+# 基础配置
 block_cipher = None
 
 # 收集所有需要的包
@@ -59,7 +60,7 @@ hiddenimports = [
     'qdarkstyle',
     'qdarkstyle.palette',
     'qdarkstyle.style_rc',
-    'qtsass',  # 添加 qtsass
+    'qtsass',
     'akshare',
     'pandas',
     'numpy',
@@ -70,12 +71,6 @@ hiddenimports = [
     'charset_normalizer',
 ] + collect_submodules('akshare')
 
-# 尝试收集 qdarkstyle 的子模块，但排除可能有问题的模块
-try:
-    hiddenimports.extend(collect_submodules('qdarkstyle', filter=lambda name: 'utils' not in name))
-except Exception as e:
-    print(f"Warning: Failed to collect some qdarkstyle submodules: {e}")
-
 # 收集所有的包数据
 datas = [
     ('config', 'config'),
@@ -84,7 +79,15 @@ datas = [
     ('utils', 'utils'),
 ]
 
-# 检查并添加 .venv/library 目录（如果存在）
+# 验证和处理图标文件
+icon_file = os.path.abspath('C:/Users/29193/PycharmProjects/StockSelecting/market.ico')
+if not os.path.exists(icon_file):
+    print(f"Warning: Icon file not found at {icon_file}")
+    icon_path = None
+else:
+    print(f"Found icon file at {icon_file}")
+
+# 检查并添加 .venv/library 目录
 venv_library_path = os.path.join('.venv', 'library')
 if os.path.exists(venv_library_path):
     datas.append((venv_library_path, 'library'))
@@ -113,7 +116,12 @@ if mini_racer_dll:
 else:
     print("WARNING: Could not find mini_racer.dll!")
 
-# 分析
+# 尝试收集 qdarkstyle 的子模块
+try:
+    hiddenimports.extend(collect_submodules('qdarkstyle', filter=lambda name: 'utils' not in name))
+except Exception as e:
+    print(f"Warning: Failed to collect some qdarkstyle submodules: {e}")
+
 a = Analysis(
     ['main.py'],
     pathex=[],
@@ -123,7 +131,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],  # 移除 qdarkstyle.utils 的排除
+    excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -156,10 +164,10 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,  # 临时设置为 True 以查看错误信息
+    console=False,
     disable_windowed_traceback=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='market.ico',
+    icon=icon_file,
 )

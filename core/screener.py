@@ -54,7 +54,7 @@ class StockScreener:
         self.config = config
         self.max_workers = config['system'].get('max_workers', 24)
         self.chunk_size = config['system'].get('chunk_size', 512)
-        self.memory_limit = config['system'].get('memory_limit', 16*1024**3)
+        self.memory_limit = config['system'].get('memory_limit', 16 * 1024 ** 3)
 
         # 缓存设置
         self.cache_dir = Path("cache")
@@ -399,11 +399,13 @@ class StockScreener:
 
                 current_price = pentagram_data['current_price']
 
+                # # 判断是否满足条件
+                # if (current_price < chip_data['avg_cost'] and  # 股价低于筹码均价
+                #         current_price > pentagram_data['support_price'] and  # 股价高于支撑线
+                #         current_price < pentagram_data['base_price']):  # 股价低于基准线
                 # 判断是否满足条件
                 if (current_price < chip_data['avg_cost'] and  # 股价低于筹码均价
-                        current_price > pentagram_data['support_price'] and  # 股价高于支撑线
-                        current_price < pentagram_data['base_price']):  # 股价低于基准线
-
+                        current_price < pentagram_data['support_price']):
                     return {
                         'code': stock_code,
                         'name': stock_name,

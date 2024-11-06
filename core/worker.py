@@ -93,7 +93,8 @@ class ScreeningWorker(QThread):
                             speed_queue.append(current_speed)
 
                         # 计算移动平均速度
-                        avg_speed = sum(speed_queue) / len(speed_queue) if speed_queue else 0
+                        # avg_speed = sum(speed_queue) / len(speed_queue) if speed_queue else 0
+                        avg_speed = current_speed if current_speed else 0
 
                         # 计算剩余时间
                         stocks_remaining = total_stocks - processed_stocks
